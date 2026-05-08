@@ -1,4 +1,4 @@
-export type ArithmeticType = 'addition' | 'subtraction' | 'multiplication' | 'division' | 'percentage' | 'fraction' | 'decimal';
+export type ArithmeticType = 'addition' | 'subtraction' | 'multiplication' | 'division' | 'percentage' | 'fraction' | 'decimal' | 'indices';
 
 export interface QuestionConfig {
   type: ArithmeticType;
@@ -38,7 +38,6 @@ export function generateQuestion(config: QuestionConfig): Question {
     return parseFloat((val / Math.pow(10, places)).toFixed(places));
   };
 
-  // Calculate difficulty score (rough heuristic)
   const calculateDifficulty = (n1: number, n2: number, t: ArithmeticType) => {
     let score = 1;
     const abs1 = Math.abs(n1);
@@ -46,9 +45,11 @@ export function generateQuestion(config: QuestionConfig): Question {
     
     if (t === 'multiplication') {
       score = (abs1 * abs2) / 100;
-      if (abs1 > 12 && abs2 > 12) score *= 1.5; // Double digits
+      if (abs1 > 12 && abs2 > 12) score *= 1.5;
     } else if (t === 'addition' || t === 'subtraction') {
       score = (abs1 + abs2) / 100;
+    } else if (t === 'indices') {
+      score = Math.pow(abs1, abs2) / 100;
     }
     
     return parseFloat(score.toFixed(2));
@@ -76,14 +77,20 @@ export function generateQuestion(config: QuestionConfig): Question {
       answer = num1 * num2;
       break;
 
-    case 'division': {
-      // num1 / num2 = answer. We generate num2 and answer then multiply for num1.
+    case 'division':
       num2 = getRandomInRange(rightMin, rightMax);
       answer = getRandomInRange(leftMin, leftMax);
       num1 = num2 * answer;
       text = `${num1} ÷ ${num2}`;
       break;
-    }
+
+    case 'indices':
+      // Usually smaller exponents for mental math
+      num1 = getRandomInRange(leftMin, leftMax);
+      num2 = getRandomInRange(rightMin, Math.min(rightMax, 3)); // Restrict to squared/cubed mostly
+      text = `${num1}^${num2}`;
+      answer = Math.pow(num1, num2);
+      break;
 
     case 'decimal': {
       num1 = applyDecimals(getRandomInRange(leftMin * 10, leftMax * 10), decimals);

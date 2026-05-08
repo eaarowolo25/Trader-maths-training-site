@@ -15,7 +15,8 @@ import {
   Clock,
   Volume2,
   Zap,
-  Target
+  Target,
+  ArrowUp
 } from 'lucide-react';
 
 const TYPE_ICONS: Record<string, any> = {
@@ -26,6 +27,7 @@ const TYPE_ICONS: Record<string, any> = {
   percentage: Percent,
   decimal: CircleDot,
   fraction: Hash,
+  indices: ArrowUp,
 };
 
 export default function PracticeGenerator({ onStart }: { onStart: () => void }) {
@@ -52,7 +54,7 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
         <button 
           onClick={onStart}
           disabled={activeTypes.length === 0}
-          className="bg-primary text-background px-8 py-3 rounded-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-primary text-white px-8 py-3 rounded-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         >
           <Play size={20} fill="currentColor" />
           START TRAINING
@@ -76,8 +78,8 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
                     onClick={() => toggleType(type)}
                     className={`flex flex-col items-center justify-center p-4 rounded-sm border transition-all ${
                       active 
-                        ? 'bg-primary/10 border-primary text-primary shadow-[0_0_10px_rgba(0,255,204,0.1)]' 
-                        : 'bg-background border-border text-muted-foreground hover:border-muted-foreground'
+                        ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                        : 'bg-background border-border text-muted hover:border-muted'
                     }`}
                   >
                     <Icon size={24} className="mb-2" />
@@ -98,46 +100,46 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
                 <div key={type} className="p-4 border border-border/50 rounded-sm bg-background/50">
                   <div className="flex items-center justify-between mb-4 border-b border-border/30 pb-2">
                     <span className="font-bold uppercase text-sm text-primary tracking-widest">{type}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">Precision Control</span>
+                    <span className="text-[10px] text-muted uppercase font-bold tracking-tight">Precision Calibration</span>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] block">Left Operand Range</label>
+                      <label className="text-[10px] text-muted uppercase tracking-[0.2em] font-bold block">Base Range (Left)</label>
                       <div className="flex items-center gap-3">
                         <input 
                           type="number"
                           value={configs[type].leftMin || 2}
                           onChange={(e) => updateConfig(type, { leftMin: parseInt(e.target.value) })}
-                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm focus:ring-1 focus:ring-primary"
                           placeholder="Min"
                         />
-                        <span className="text-muted-foreground text-xs">TO</span>
+                        <span className="text-muted text-xs font-bold">TO</span>
                         <input 
                           type="number"
                           value={configs[type].leftMax || 100}
                           onChange={(e) => updateConfig(type, { leftMax: parseInt(e.target.value) })}
-                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm focus:ring-1 focus:ring-primary"
                           placeholder="Max"
                         />
                       </div>
                     </div>
                     <div className="space-y-4">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] block">Right Operand Range</label>
+                      <label className="text-[10px] text-muted uppercase tracking-[0.2em] font-bold block">Exponent/Operand Range (Right)</label>
                       <div className="flex items-center gap-3">
                         <input 
                           type="number"
                           value={configs[type].rightMin || 2}
                           onChange={(e) => updateConfig(type, { rightMin: parseInt(e.target.value) })}
-                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm focus:ring-1 focus:ring-primary"
                           placeholder="Min"
                         />
-                        <span className="text-muted-foreground text-xs">TO</span>
+                        <span className="text-muted text-xs font-bold">TO</span>
                         <input 
                           type="number"
                           value={configs[type].rightMax || 100}
                           onChange={(e) => updateConfig(type, { rightMax: parseInt(e.target.value) })}
-                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm focus:ring-1 focus:ring-primary"
                           placeholder="Max"
                         />
                       </div>
@@ -146,8 +148,8 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
                 </div>
               ))}
               {activeTypes.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground italic border border-dashed border-border rounded-sm">
-                  Enable arithmetic categories above to calibrate operand ranges.
+                <div className="text-center py-12 text-muted italic border border-dashed border-border rounded-sm font-medium">
+                  Select arithmetic telemetry channels above to begin calibration.
                 </div>
               )}
             </div>
@@ -165,10 +167,10 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
                 <button
                   key={d}
                   onClick={() => setSessionDuration(d)}
-                  className={`py-2 rounded-sm border text-xs font-bold transition-all ${
+                  className={`py-2 rounded-sm border text-xs font-bold transition-all tracking-tight ${
                     sessionDuration === d 
-                      ? 'bg-secondary/10 border-secondary text-secondary' 
-                      : 'border-border text-muted-foreground hover:border-muted-foreground'
+                      ? 'bg-secondary/10 border-secondary text-secondary shadow-sm' 
+                      : 'border-border text-muted hover:border-muted'
                   }`}
                 >
                   {d}s
@@ -186,11 +188,11 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
               <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm bg-background/30">
                 <div>
                   <p className="text-sm font-bold">Auditory Mode</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Spoken questions only</p>
+                  <p className="text-[10px] text-muted uppercase tracking-wider font-bold">Audio questions only</p>
                 </div>
                 <button 
                   onClick={toggleAuditory}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${isAuditory ? 'bg-primary shadow-[0_0_10px_rgba(0,255,204,0.3)]' : 'bg-muted/20'}`}
+                  className={`w-12 h-6 rounded-full transition-all relative ${isAuditory ? 'bg-primary shadow-sm' : 'bg-muted/20'}`}
                 >
                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isAuditory ? 'left-7' : 'left-1'}`} />
                 </button>
@@ -199,11 +201,11 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
               <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm bg-background/30">
                 <div>
                   <p className="text-sm font-bold">Fatigue Simulation</p>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Mistake pressure effects</p>
+                  <p className="text-[10px] text-muted uppercase tracking-wider font-bold">High-pressure rendering</p>
                 </div>
                 <button 
                   onClick={toggleFatigue}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${isFatigue ? 'bg-primary shadow-[0_0_10px_rgba(0,255,204,0.3)]' : 'bg-muted/20'}`}
+                  className={`w-12 h-6 rounded-full transition-all relative ${isFatigue ? 'bg-primary shadow-sm' : 'bg-muted/20'}`}
                 >
                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isFatigue ? 'left-7' : 'left-1'}`} />
                 </button>
@@ -211,10 +213,10 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
             </div>
           </div>
 
-          <div className="p-4 bg-primary/5 border border-primary/20 rounded-sm">
-            <h4 className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">Pro Tip</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Elite traders often practice within narrow ranges (e.g., 13-19 x 13-19) to master specific multiplication patterns.
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-sm shadow-sm">
+            <h4 className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">Quant Tip</h4>
+            <p className="text-xs text-muted leading-relaxed font-medium">
+              Elite traders master indices (up to 20²) for rapid option pricing calculations.
             </p>
           </div>
         </div>

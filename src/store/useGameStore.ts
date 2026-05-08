@@ -21,15 +21,34 @@ interface GameSession {
   }[];
 }
 
+interface LadderConfig {
+  leftNumber: number;
+  rightMin: number;
+  rightMax: number;
+  timeLimit: number;
+  isCountdown: boolean;
+  isSequential: boolean;
+}
+
+interface PerformanceMetric {
+  avgTime: number;
+  totalAttempts: number;
+  errorCount: number;
+}
+
 interface GameState {
   // Settings
   theme: ThemeType;
   configs: Record<ArithmeticType, QuestionConfig>;
   activeTypes: ArithmeticType[];
-  sessionDuration: number; // in seconds
+  sessionDuration: number;
   isAuditory: boolean;
   isFatigue: boolean;
   speechRate: number;
+
+  // Ladder Config & Performance
+  ladderConfig: LadderConfig;
+  ladderPerformance: Record<string, PerformanceMetric>; // Key: "L x R"
 
   // History
   history: GameSession[];
@@ -39,6 +58,8 @@ interface GameState {
   // Actions
   setTheme: (theme: ThemeType) => void;
   updateConfig: (type: ArithmeticType, config: Partial<QuestionConfig>) => void;
+  updateLadderConfig: (config: Partial<LadderConfig>) => void;
+  recordLadderAttempt: (question: string, timeTaken: number, isCorrect: boolean) => void;
   toggleType: (type: ArithmeticType) => void;
   addSession: (session: GameSession) => void;
   setSessionDuration: (duration: number) => void;
@@ -54,6 +75,7 @@ const DEFAULT_CONFIGS: Record<ArithmeticType, QuestionConfig> = {
   percentage: { type: 'percentage' },
   fraction: { type: 'fraction' },
   decimal: { type: 'decimal', leftMin: 1, leftMax: 10, rightMin: 1, rightMax: 10, decimals: 1 },
+  indices: { type: 'indices', leftMin: 2, leftMax: 20, rightMin: 2, rightMax: 3 },
 };
 
 export const useGameStore = create<GameState>()(
@@ -66,6 +88,15 @@ export const useGameStore = create<GameState>()(
       isAuditory: false,
       isFatigue: false,
       speechRate: 1.0,
+      ladderConfig: {
+        leftNumber: 17,
+        rightMin: 1,
+        rightMax: 100,
+        timeLimit: 5,
+        isCountdown: true,
+        isSequential: false,
+      },
+      ladderPerformance: {},
       history: [],
       bestScore: 0,
       totalQuestionsSolved: 0,
@@ -79,6 +110,29 @@ export const useGameStore = create<GameState>()(
             [type]: { ...state.configs[type], ...config },
           },
         })),
+
+      updateLadderConfig: (config) =>
+        set((state) => ({
+          ladderConfig: { ...state.ladderConfig, ...config },
+        })),
+
+      recordLadderAttempt: (question, timeTaken, isCorrect) =>
+        set((state) => {
+          const current = state.ladderPerformance[question] || { avgTime: 0, totalAttempts: 0, errorCount: 0 };
+          const newAttempts = current.totalAttempts + 1;
+          const newAvgTime = (current.avgTime * current.totalAttempts + timeTaken) / newAttempts;
+          
+          return {
+            ladderPerformance: {
+              ...state.ladderPerformance,
+              [question]: {
+                avgTime: newAvgTime,
+                totalAttempts: newAttempts,
+                errorCount: current.errorCount + (isCorrect ? 0 : 1),
+              },
+            },
+          };
+        }),
 
       toggleType: (type) =>
         set((state) => ({

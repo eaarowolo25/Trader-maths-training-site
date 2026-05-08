@@ -13,15 +13,17 @@ import {
   TrendingUp,
   BrainCircuit,
   Volume2,
-  Trophy
+  Trophy,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PracticeGenerator from '@/components/Practice/PracticeGenerator';
 import LiveSpeedMode from '@/components/Practice/LiveSpeedMode';
 import AnalyticsDashboard from '@/components/Analytics/AnalyticsDashboard';
+import LadderMode from '@/components/Practice/LadderMode';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics' | 'ladder'>('dashboard');
   const { history, bestScore, totalQuestionsSolved, theme, setTheme } = useGameStore();
 
   // Apply theme class to body
@@ -43,6 +45,8 @@ export default function Home() {
         return <PracticeGenerator onStart={() => setActiveTab('game')} />;
       case 'game':
         return <LiveSpeedMode onExit={() => setActiveTab('dashboard')} />;
+      case 'ladder':
+        return <LadderMode onExit={() => setActiveTab('dashboard')} />;
       case 'settings':
         return <SettingsPanel theme={theme} setTheme={setTheme} />;
       case 'analytics':
@@ -60,7 +64,7 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      {activeTab !== 'game' && (
+      {(activeTab !== 'game' && activeTab !== 'ladder') && (
         <aside className="w-64 border-r border-border flex flex-col p-4 bg-sidebar">
           <div className="mb-8 px-2 flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center shadow-sm">
@@ -81,6 +85,12 @@ export default function Home() {
               label="Practice" 
               active={activeTab === 'practice' || activeTab === 'game'} 
               onClick={() => setActiveTab('practice')} 
+            />
+            <SidebarItem 
+              icon={<Layers size={20} />} 
+              label="Multi Ladder" 
+              active={activeTab === 'ladder'} 
+              onClick={() => setActiveTab('ladder')} 
             />
             <SidebarItem 
               icon={<BarChart3 size={20} />} 
@@ -109,7 +119,7 @@ export default function Home() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-background p-8">
+      <main className={`flex-1 overflow-y-auto bg-background p-8 ${(activeTab === 'game' || activeTab === 'ladder') ? 'flex items-center justify-center' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -117,7 +127,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="max-w-6xl mx-auto"
+            className="w-full max-w-6xl mx-auto"
           >
             {renderContent()}
           </motion.div>
