@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useGameStore } from '@/store/useGameStore';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { GameAttempt, useGameStore } from '@/store/useGameStore';
 import { generateQuestion, Question } from '@/lib/arithmetic';
 import { getMultiplicationTip } from '@/lib/shortcuts';
+import { computeDifficultyWeightedMetrics, computePromptMetrics } from '@/lib/adaptive';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Zap, Target, X, Trophy, AlertCircle, Lightbulb } from 'lucide-react';
+import { Timer, Zap, Target, X, Trophy, AlertCircle, Lightbulb, Volume2 } from 'lucide-react';
 
 export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
   const { 
@@ -14,15 +15,15 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
     sessionDuration, 
     addSession,
     isAuditory,
-    isFatigue
+    isFatigue,
+    speechRate
   } = useGameStore();
 
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [userInput, setUserInput] = useState('');
   const [timeLeft, setTimeLeft] = useState(sessionDuration);
   const [score, setScore] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(0);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<GameAttempt[]>([]);
   const [gameState, setGameState] = useState<'countdown' | 'playing' | 'finished'>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
@@ -31,10 +32,59 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<number>(0);
   const questionStartTimeRef = useRef<number>(0);
+  const promptCounterRef = useRef<number>(0);
+  const currentPromptIdRef = useRef<string>('');
+
+  const questionRecoveryLog = useMemo(() => {
+    const grouped = new Map<string, {
+      question: string;
+      answer: number;
+      firstCorrectAnswer: number | null;
+      firstSeenCorrect: boolean;
+      wrongAnswersBeforeCorrect: number[];
+      wrongAnswersAfterFirstCorrect: number[];
+      gotRight: boolean;
+    }>();
+
+    history.forEach((item) => {
+      const key = `${item.question}__${item.answer}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          question: item.question,
+          answer: item.answer,
+          firstCorrectAnswer: null,
+          firstSeenCorrect: false,
+          wrongAnswersBeforeCorrect: [],
+          wrongAnswersAfterFirstCorrect: [],
+          gotRight: false,
+        });
+      }
+
+      const current = grouped.get(key)!;
+
+      if (item.correct) {
+        if (!current.gotRight) {
+          current.gotRight = true;
+          current.firstCorrectAnswer = item.userAnswer;
+          current.firstSeenCorrect = current.wrongAnswersBeforeCorrect.length === 0;
+        }
+      } else {
+        if (!current.gotRight) {
+          current.wrongAnswersBeforeCorrect.push(item.userAnswer);
+        } else {
+          current.wrongAnswersAfterFirstCorrect.push(item.userAnswer);
+        }
+      }
+    });
+
+    return Array.from(grouped.values()).reverse();
+  }, [history]);
 
   const nextQuestion = () => {
     const type = activeTypes[Math.floor(Math.random() * activeTypes.length)];
     const question = generateQuestion(configs[type]);
+    promptCounterRef.current += 1;
+    currentPromptIdRef.current = `p_${startTimeRef.current}_${promptCounterRef.current}`;
     setCurrentQuestion(question);
     questionStartTimeRef.current = Date.now();
     setUserInput('');
@@ -46,11 +96,33 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
 
   const speak = (text: string) => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text.replace('×', 'times').replace('÷', 'divided by'));
-      utterance.rate = 1.2;
+      // Prevent overlap/queue buildup when replaying or moving quickly.
+      window.speechSynthesis.cancel();
+      const spoken = text
+        .replace(/×/g, ' times ')
+        .replace(/÷/g, ' divided by ')
+        .replace(/\^/g, ' to the power of ')
+        .replace(/\+/g, ' plus ')
+        .replace(/ - /g, ' minus ');
+      const utterance = new SpeechSynthesisUtterance(spoken.replace(/\s+/g, ' ').trim());
+      utterance.rate = speechRate;
       window.speechSynthesis.speak(utterance);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuditory && typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }, [isAuditory]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -73,26 +145,30 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
   }, [timeLeft, gameState]);
 
   const finishGame = () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     setGameState('finished');
-    const accuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    const prompt = computePromptMetrics(history);
+    const weighted = computeDifficultyWeightedMetrics(history, sessionDuration);
     addSession({
       id: Math.random().toString(36).substr(2, 9),
       startTime: startTimeRef.current,
       endTime: Date.now(),
       score,
-      totalQuestions,
-      accuracy,
+      totalQuestions: prompt.solvedPrompts,
+      accuracy: prompt.firstPassPrecision,
+      firstPassPrecision: prompt.firstPassPrecision,
+      attemptEfficiency: prompt.attemptEfficiency,
       questions: history,
+      qualityScore: weighted.weightedBenchmark,
+      recoveryRate: prompt.recoveryRate,
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setUserInput(val);
-
-    if (currentQuestion && val === currentQuestion.answer.toString()) {
-      submitAnswer(parseFloat(val));
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -106,6 +182,8 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
 
     const isCorrect = val === currentQuestion.answer;
     const timeTaken = Date.now() - questionStartTimeRef.current;
+    const promptId = currentPromptIdRef.current;
+    const attemptIndex = history.filter((item) => item.promptId === promptId).length + 1;
 
     // Check for tip if incorrect and multiplication
     if (!isCorrect && currentQuestion.type === 'multiplication') {
@@ -116,25 +194,29 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
       setActiveTip(null);
     }
 
-    setHistory([...history, {
+    const nextHistory = [...history, {
+      promptId,
+      attemptIndex,
       question: currentQuestion.text,
       answer: currentQuestion.answer,
       userAnswer: val,
       correct: isCorrect,
       timeTaken,
       type: currentQuestion.type,
+      difficulty: currentQuestion.difficulty,
       tip: !isCorrect && currentQuestion.type === 'multiplication' ? getMultiplicationTip(parseInt(currentQuestion.text.split(' × ')[0]), parseInt(currentQuestion.text.split(' × ')[1])) : null
-    }]);
+    }];
+    setHistory(nextHistory);
 
     if (isCorrect) {
       setScore(score + 1);
       setLastCorrect(true);
+      nextQuestion();
     } else {
       setLastCorrect(false);
+      questionStartTimeRef.current = Date.now();
+      setUserInput('');
     }
-
-    setTotalQuestions(totalQuestions + 1);
-    nextQuestion();
     setTimeout(() => setLastCorrect(null), 500);
   };
 
@@ -161,12 +243,14 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
   }
 
   if (gameState === 'finished') {
-    const accuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-    const qpm = (totalQuestions / (sessionDuration / 60)).toFixed(1);
-    const benchmark = Math.min(Math.round((parseFloat(qpm) / 40) * (accuracy / 100) * 100), 100);
+    const prompt = computePromptMetrics(history);
+    const firstPassPrecision = prompt.firstPassPrecision;
+    const qpm = (prompt.solvedPrompts / (sessionDuration / 60)).toFixed(1);
+    const weighted = computeDifficultyWeightedMetrics(history, sessionDuration);
+    const benchmark = weighted.weightedBenchmark;
 
     return (
-      <div className="max-w-4xl mx-auto space-y-8 py-12">
+      <div className="max-w-4xl mx-auto space-y-8 py-6 md:py-10 max-h-[calc(100vh-5rem)] overflow-y-auto pr-1">
         <div className="terminal-card text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-primary/20">
             <motion.div initial={{ width: 0 }} animate={{ width: `${benchmark}%` }} className="h-full bg-primary" />
@@ -182,7 +266,7 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">Accuracy</p>
-              <p className="text-4xl font-mono font-bold">{accuracy}%</p>
+              <p className="text-4xl font-mono font-bold">{firstPassPrecision}%</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">Questions/Min</p>
@@ -232,17 +316,36 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
           </div>
 
           <div className="terminal-card">
-            <h3 className="text-sm font-bold mb-6 uppercase tracking-widest">Performance Distribution</h3>
+            <h3 className="text-sm font-bold mb-6 uppercase tracking-widest">Question Recovery Log</h3>
             <div className="space-y-2">
-              {history.slice(-10).reverse().map((item, idx) => (
-                <div key={idx} className={`flex items-center justify-between p-3 rounded-sm border ${item.correct ? 'border-primary/20 bg-primary/5' : 'border-accent/20 bg-accent/5'} text-xs font-mono`}>
-                  <span>{item.question}</span>
-                  <div className="flex items-center gap-4">
-                    <span className={item.correct ? 'text-primary' : 'text-accent'}>{item.userAnswer}</span>
-                    <span className="text-[10px] text-muted-foreground">{(item.timeTaken / 1000).toFixed(2)}s</span>
+              {questionRecoveryLog.length > 0 ? questionRecoveryLog.map((item, idx) => (
+                <div key={`${item.question}-${item.answer}-${idx}`} className={`p-3 rounded-sm border text-xs font-mono ${item.gotRight ? 'border-primary/20 bg-primary/5' : 'border-accent/20 bg-accent/5'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{item.question} = {item.answer}</span>
+                    <span className={item.gotRight ? 'text-primary font-bold' : 'text-accent font-bold'}>
+                      {item.gotRight ? 'RIGHT' : 'NOT SOLVED'}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] text-muted-foreground">
+                    {item.gotRight ? (
+                      <>
+                        {item.wrongAnswersBeforeCorrect.length > 0
+                          ? <>Wrong before first correct: {item.wrongAnswersBeforeCorrect.join(', ')} | First correct: {item.firstCorrectAnswer}</>
+                          : <>First seen correct: {item.firstCorrectAnswer}</>}
+                        {item.wrongAnswersAfterFirstCorrect.length > 0 && (
+                          <> | Wrong after first correct: {item.wrongAnswersAfterFirstCorrect.join(', ')}</>
+                        )}
+                      </>
+                    ) : (
+                      <>Wrong attempts: {item.wrongAnswersBeforeCorrect.join(', ') || 'none'}</>
+                    )}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-12 text-muted-foreground italic text-sm">
+                  No questions recorded in this session.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -265,7 +368,7 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Solved</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Solved Prompts</p>
             <div className="flex items-center gap-2">
               <Zap size={18} className="text-primary" />
               <span className="text-3xl font-mono font-bold text-primary">{score}</span>
@@ -275,10 +378,10 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
 
         <div className="flex items-center gap-8">
           <div className="text-right hidden md:block">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Accuracy</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">First-Pass Precision</p>
             <div className="flex items-center gap-2 justify-end">
               <Target size={14} className="text-secondary" />
-              <span className="text-xl font-mono font-bold">{totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 100}%</span>
+              <span className="text-xl font-mono font-bold">{computePromptMetrics(history).firstPassPrecision}%</span>
             </div>
           </div>
           <button onClick={onExit} className="p-2 hover:bg-accent/10 hover:text-accent rounded-full transition-all">
@@ -330,6 +433,16 @@ export default function LiveSpeedMode({ onExit }: { onExit: () => void }) {
             )}
           </AnimatePresence>
         </div>
+
+        {isAuditory && currentQuestion && (
+          <button
+            onClick={() => speak(currentQuestion.text)}
+            className="mt-8 px-5 py-2 border border-primary/30 bg-primary/10 rounded-sm text-[11px] uppercase tracking-widest font-bold text-primary hover:bg-primary/20 transition-all flex items-center gap-2"
+          >
+            <Volume2 size={14} />
+            Replay Question
+          </button>
+        )}
       </div>
       
       {isAuditory && (

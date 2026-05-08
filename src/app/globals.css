@@ -14,16 +14,16 @@
 }
 
 .bloomberg-light {
-  --background: #ffffff;
-  --foreground: #000000;
+  --background: #f6f0e3;
+  --foreground: #1e1b16;
   --primary: #0033cc;
-  --secondary: #d97706;
-  --accent: #dc2626;
-  --card: #f8fafc;
-  --card-foreground: #0f172a;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --sidebar: #f1f5f9;
+  --secondary: #b45309;
+  --accent: #b91c1c;
+  --card: #fff9ee;
+  --card-foreground: #221f19;
+  --border: #d8c9ad;
+  --muted: #5f5647;
+  --sidebar: #efe5d2;
 }
 
 @theme {
@@ -90,8 +90,8 @@ input:focus {
 }
 
 .bloomberg-light input {
-  background: white;
-  color: black;
+  background: #fff9ee;
+  color: #1e1b16;
 }
 
 /* Custom scrollbar */

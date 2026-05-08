@@ -14,17 +14,21 @@ import {
   BrainCircuit,
   Volume2,
   Trophy,
-  Layers
+  Layers,
+  Grid3x3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PracticeGenerator from '@/components/Practice/PracticeGenerator';
 import LiveSpeedMode from '@/components/Practice/LiveSpeedMode';
 import AnalyticsDashboard from '@/components/Analytics/AnalyticsDashboard';
 import LadderMode from '@/components/Practice/LadderMode';
+import ConcentrationGridMode from '@/components/Practice/ConcentrationGridMode';
+import { BENCHMARK_TARGET_QPM, buildGuidedRecommendation, computeDifficultyWeightedMetrics } from '@/lib/adaptive';
+import { ConcentrationSession, GameSession, ThemeType } from '@/store/useGameStore';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics' | 'ladder'>('dashboard');
-  const { history, bestScore, totalQuestionsSolved, theme, setTheme } = useGameStore();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics' | 'ladder' | 'concentration'>('dashboard');
+  const { history, bestScore, totalQuestionsSolved, concentrationHistory, theme, setTheme, configs } = useGameStore();
 
   // Apply theme class to body
   useEffect(() => {
@@ -40,13 +44,15 @@ export default function Home() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard history={history} bestScore={bestScore} totalQuestionsSolved={totalQuestionsSolved} onStart={() => setActiveTab('practice')} />;
+        return <Dashboard history={history} bestScore={bestScore} totalQuestionsSolved={totalQuestionsSolved} concentrationHistory={concentrationHistory} configs={configs} onStart={() => setActiveTab('practice')} />;
       case 'practice':
         return <PracticeGenerator onStart={() => setActiveTab('game')} />;
       case 'game':
         return <LiveSpeedMode onExit={() => setActiveTab('dashboard')} />;
       case 'ladder':
         return <LadderMode onExit={() => setActiveTab('dashboard')} />;
+      case 'concentration':
+        return <ConcentrationGridMode onExit={() => setActiveTab('dashboard')} />;
       case 'settings':
         return <SettingsPanel theme={theme} setTheme={setTheme} />;
       case 'analytics':
@@ -57,14 +63,20 @@ export default function Home() {
           </div>
         );
       default:
-        return <Dashboard history={history} bestScore={bestScore} totalQuestionsSolved={totalQuestionsSolved} onStart={() => setActiveTab('practice')} />;
+        return <Dashboard history={history} bestScore={bestScore} totalQuestionsSolved={totalQuestionsSolved} concentrationHistory={concentrationHistory} configs={configs} onStart={() => setActiveTab('practice')} />;
     }
   };
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      {(activeTab !== 'game' && activeTab !== 'ladder') && (
+      {(
+        activeTab === 'dashboard' ||
+        activeTab === 'practice' ||
+        activeTab === 'settings' ||
+        activeTab === 'analytics' ||
+        activeTab === 'concentration'
+      ) && (
         <aside className="w-64 border-r border-border flex flex-col p-4 bg-sidebar">
           <div className="mb-8 px-2 flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center shadow-sm">
@@ -83,13 +95,13 @@ export default function Home() {
             <SidebarItem 
               icon={<Play size={20} />} 
               label="Practice" 
-              active={activeTab === 'practice' || activeTab === 'game'} 
+              active={activeTab === 'practice'} 
               onClick={() => setActiveTab('practice')} 
             />
             <SidebarItem 
               icon={<Layers size={20} />} 
               label="Multi Ladder" 
-              active={activeTab === 'ladder'} 
+              active={false} 
               onClick={() => setActiveTab('ladder')} 
             />
             <SidebarItem 
@@ -97,6 +109,12 @@ export default function Home() {
               label="Analytics" 
               active={activeTab === 'analytics'} 
               onClick={() => setActiveTab('analytics')} 
+            />
+            <SidebarItem 
+              icon={<Grid3x3 size={20} />} 
+              label="Concentration" 
+              active={activeTab === 'concentration'} 
+              onClick={() => setActiveTab('concentration')} 
             />
             <SidebarItem 
               icon={<Settings size={20} />} 
@@ -153,20 +171,31 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
   );
 }
 
-function Dashboard({ history, bestScore, totalQuestionsSolved, onStart }: any) {
+function Dashboard({
+  history,
+  bestScore,
+  totalQuestionsSolved,
+  concentrationHistory,
+  onStart,
+  configs,
+}: {
+  history: GameSession[];
+  bestScore: number;
+  totalQuestionsSolved: number;
+  concentrationHistory: ConcentrationSession[];
+  onStart: () => void;
+  configs: ReturnType<typeof useGameStore.getState>['configs'];
+}) {
+  const { recommendation } = buildGuidedRecommendation(history, configs);
   const avgAccuracy = history.length > 0 
-    ? (history.reduce((acc: number, s: any) => acc + s.accuracy, 0) / history.length).toFixed(1) 
+    ? (history.reduce((acc: number, s) => acc + (s.firstPassPrecision ?? s.accuracy), 0) / history.length).toFixed(1) 
     : 0;
 
   const calculateBenchmark = () => {
     if (history.length === 0) return 0;
     const latest = history[0];
-    const durationMins = (latest.endTime - latest.startTime) / 60000;
-    const qpm = latest.totalQuestions / durationMins;
-    const accuracy = latest.accuracy / 100;
-    const targetQPM = 40;
-    const score = (qpm / targetQPM) * accuracy * 100;
-    return Math.min(Math.round(score), 100);
+    const durationSeconds = Math.max((latest.endTime - latest.startTime) / 1000, 1);
+    return computeDifficultyWeightedMetrics(latest.questions, durationSeconds).weightedBenchmark;
   };
 
   const benchmark = calculateBenchmark();
@@ -176,12 +205,21 @@ function Dashboard({ history, bestScore, totalQuestionsSolved, onStart }: any) {
     const latest = history[0];
     const durationMins = (latest.endTime - latest.startTime) / 60000;
     const qpm = latest.totalQuestions / durationMins;
+    const weighted = computeDifficultyWeightedMetrics(
+      latest.questions,
+      Math.max((latest.endTime - latest.startTime) / 1000, 1)
+    );
     
-    if (latest.accuracy < 90) {
-      return "Priority: Accuracy. You are sacrificing precision for speed. Slow down by 15% and focus on a 'zero-error' streak to stabilize your mental baseline.";
+    const firstPass = latest.firstPassPrecision ?? latest.accuracy;
+
+    if (firstPass < 85) {
+      return "Priority: First-pass precision. Too many items are being corrected after an initial miss. Slow down slightly and target clean first submissions.";
     }
     if (qpm < 25) {
       return "Priority: Latency. Accuracy is solid, but hesitation is high. Trust your first computation; don't double-check simple operations. Aim for a faster rhythm.";
+    }
+    if (weighted.avgDifficulty < 1.1) {
+      return "Priority: Difficulty. Increase operand ranges and operation mix; your weighted benchmark is being capped by low challenge level.";
     }
     if (benchmark < 85) {
       return "Priority: Endurance. Your metrics are good, but session volume or difficulty is low. Increase operand ranges to 2-digit multiplications to push your cognitive ceiling.";
@@ -190,6 +228,9 @@ function Dashboard({ history, bestScore, totalQuestionsSolved, onStart }: any) {
   };
 
   const improvementTip = getImprovementTip();
+  const bestConcentration = concentrationHistory.length > 0
+    ? Math.min(...concentrationHistory.map((s) => s.totalMs))
+    : null;
 
   return (
     <div className="space-y-8">
@@ -209,9 +250,21 @@ function Dashboard({ history, bestScore, totalQuestionsSolved, onStart }: any) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Personal Best" value={bestScore} icon={<TrendingUp className="text-primary" />} />
-        <StatCard label="Accuracy" value={`${avgAccuracy}%`} icon={<Target className="text-secondary" />} />
+        <StatCard label="First-Pass %" value={`${avgAccuracy}%`} icon={<Target className="text-secondary" />} />
         <StatCard label="Elite Benchmark" value={`${benchmark}%`} icon={<Trophy className={benchmark > 80 ? "text-primary" : "text-muted"} />} />
         <StatCard label="Total Vol" value={totalQuestionsSolved} icon={<Zap className="text-accent" />} />
+      </div>
+
+      <div className="terminal-card">
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+            <Grid3x3 size={14} className="text-secondary" />
+            Concentration Grid
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Best time: {bestConcentration ? `${(bestConcentration / 1000).toFixed(2)}s` : 'No runs yet'}.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -248,12 +301,18 @@ function Dashboard({ history, bestScore, totalQuestionsSolved, onStart }: any) {
             <div className="pt-4 border-t border-border space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-muted">Required QPM</span>
-                <span className="font-mono font-bold">40.0</span>
+                <span className="font-mono font-bold">{BENCHMARK_TARGET_QPM.toFixed(1)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-muted">Target Accuracy</span>
                 <span className="font-mono font-bold text-primary">98%</span>
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <h4 className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">{recommendation.title}</h4>
+              <p className="text-xs text-muted leading-relaxed mb-2">{recommendation.summary}</p>
+              <p className="text-[11px] font-mono text-secondary">{recommendation.targetMetric}</p>
             </div>
           </div>
         </div>
@@ -276,7 +335,7 @@ function StatCard({ label, value, icon }: { label: string, value: string | numbe
   );
 }
 
-function SettingsPanel({ theme, setTheme }: any) {
+function SettingsPanel({ theme, setTheme }: { theme: ThemeType; setTheme: (theme: ThemeType) => void }) {
   return (
     <div className="terminal-card max-w-2xl mx-auto">
       <h3 className="text-xl font-bold mb-8 flex items-center gap-2">

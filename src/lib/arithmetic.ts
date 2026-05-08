@@ -22,10 +22,10 @@ export interface Question {
 export function generateQuestion(config: QuestionConfig): Question {
   const { type, leftMin = 2, leftMax = 100, rightMin = 2, rightMax = 100, decimals = 0, allowNegatives = false } = config;
 
-  let num1: number;
-  let num2: number;
-  let text: string;
-  let answer: number;
+  let num1 = 0;
+  let num2 = 0;
+  let text = '';
+  let answer = 0;
 
   const getRandomInRange = (min: number, max: number) => {
     let val = Math.floor(Math.random() * (max - min + 1)) + min;

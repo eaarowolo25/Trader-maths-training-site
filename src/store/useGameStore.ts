@@ -4,21 +4,65 @@ import { ArithmeticType, QuestionConfig } from '@/lib/arithmetic';
 
 export type ThemeType = 'terminal-dark' | 'bloomberg-light';
 
-interface GameSession {
+export interface GameAttempt {
+  promptId?: string;
+  attemptIndex?: number;
+  question: string;
+  answer: number;
+  userAnswer: number;
+  correct: boolean;
+  timeTaken: number;
+  type: ArithmeticType;
+  difficulty?: number;
+  tip?: string | null;
+}
+
+export interface GuidedRecommendation {
+  title: string;
+  summary: string;
+  focusTypes: ArithmeticType[];
+  duration: number;
+  targetMetric: string;
+}
+
+export interface GameSession {
   id: string;
   startTime: number;
   endTime: number;
   score: number;
   totalQuestions: number;
   accuracy: number;
-  questions: {
-    question: string;
-    answer: number;
-    userAnswer: number;
-    correct: boolean;
-    timeTaken: number;
-    type: ArithmeticType;
-  }[];
+  firstPassPrecision?: number;
+  attemptEfficiency?: number;
+  questions: GameAttempt[];
+  qualityScore?: number;
+  recoveryRate?: number;
+  topErrorTags?: string[];
+}
+
+export interface ConcentrationTransition {
+  from: number;
+  to: number;
+  ms: number;
+}
+
+export interface ConcentrationSession {
+  id: string;
+  startTime: number;
+  endTime: number;
+  totalMs: number;
+  rangeStart?: number;
+  rangeEnd?: number;
+  misclickCount: number;
+  splitTimesMs: number[];
+  rangeBandAveragesMs?: number[];
+  rangeBandTotalsMs?: number[];
+  rangeBandCounts?: number[];
+  slowTransitions: ConcentrationTransition[];
+  slowdownIndex: number;
+  spatialInefficiency: number;
+  recoveryAfterErrorMs: number;
+  primaryBottlenecks: string[];
 }
 
 interface LadderConfig {
@@ -52,6 +96,7 @@ interface GameState {
 
   // History
   history: GameSession[];
+  concentrationHistory: ConcentrationSession[];
   bestScore: number;
   totalQuestionsSolved: number;
 
@@ -61,7 +106,13 @@ interface GameState {
   updateLadderConfig: (config: Partial<LadderConfig>) => void;
   recordLadderAttempt: (question: string, timeTaken: number, isCorrect: boolean) => void;
   toggleType: (type: ArithmeticType) => void;
+  setPracticeSetup: (payload: {
+    activeTypes: ArithmeticType[];
+    duration?: number;
+    configOverrides?: Partial<Record<ArithmeticType, Partial<QuestionConfig>>>;
+  }) => void;
   addSession: (session: GameSession) => void;
+  addConcentrationSession: (session: ConcentrationSession) => void;
   setSessionDuration: (duration: number) => void;
   toggleAuditory: () => void;
   toggleFatigue: () => void;
@@ -98,6 +149,7 @@ export const useGameStore = create<GameState>()(
       },
       ladderPerformance: {},
       history: [],
+      concentrationHistory: [],
       bestScore: 0,
       totalQuestionsSolved: 0,
 
@@ -141,11 +193,34 @@ export const useGameStore = create<GameState>()(
             : [...state.activeTypes, type],
         })),
 
+      setPracticeSetup: ({ activeTypes, duration, configOverrides }) =>
+        set((state) => {
+          const nextConfigs = { ...state.configs };
+          if (configOverrides) {
+            Object.entries(configOverrides).forEach(([type, override]) => {
+              if (!override) return;
+              const typed = type as ArithmeticType;
+              nextConfigs[typed] = { ...nextConfigs[typed], ...override };
+            });
+          }
+
+          return {
+            activeTypes,
+            sessionDuration: duration ?? state.sessionDuration,
+            configs: nextConfigs,
+          };
+        }),
+
       addSession: (session) =>
         set((state) => ({
           history: [session, ...state.history].slice(0, 100),
           bestScore: Math.max(state.bestScore, session.score),
           totalQuestionsSolved: state.totalQuestionsSolved + session.totalQuestions,
+        })),
+
+      addConcentrationSession: (session) =>
+        set((state) => ({
+          concentrationHistory: [session, ...state.concentrationHistory].slice(0, 100),
         })),
 
       setSessionDuration: (duration) => set({ sessionDuration: duration }),

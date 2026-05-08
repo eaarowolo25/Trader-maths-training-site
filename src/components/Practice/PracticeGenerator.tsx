@@ -3,6 +3,7 @@
 import React from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { ArithmeticType } from '@/lib/arithmetic';
+import { buildGuidedRecommendation } from '@/lib/adaptive';
 import { 
   Plus, 
   Minus, 
@@ -33,9 +34,11 @@ const TYPE_ICONS: Record<string, any> = {
 export default function PracticeGenerator({ onStart }: { onStart: () => void }) {
   const { 
     configs, 
+    history,
     activeTypes, 
     toggleType, 
     updateConfig, 
+    setPracticeSetup,
     sessionDuration, 
     setSessionDuration,
     isAuditory,
@@ -43,6 +46,16 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
     isFatigue,
     toggleFatigue
   } = useGameStore();
+  const [mode, setMode] = React.useState<'manual' | 'guided'>('manual');
+  const guided = buildGuidedRecommendation(history, configs);
+
+  const applyGuidedPlan = () => {
+    setPracticeSetup({
+      activeTypes: guided.recommendation.focusTypes,
+      duration: guided.recommendation.duration,
+      configOverrides: guided.configOverrides,
+    });
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -63,6 +76,48 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+          <div className="terminal-card">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-secondary">
+              <Target size={20} />
+              Training Mode
+            </h3>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => setMode('manual')}
+                className={`py-2 rounded-sm border text-xs font-bold transition-all tracking-tight ${
+                  mode === 'manual'
+                    ? 'bg-secondary/10 border-secondary text-secondary shadow-sm'
+                    : 'border-border text-muted hover:border-muted'
+                }`}
+              >
+                MANUAL
+              </button>
+              <button
+                onClick={() => setMode('guided')}
+                className={`py-2 rounded-sm border text-xs font-bold transition-all tracking-tight ${
+                  mode === 'guided'
+                    ? 'bg-secondary/10 border-secondary text-secondary shadow-sm'
+                    : 'border-border text-muted hover:border-muted'
+                }`}
+              >
+                GUIDED
+              </button>
+            </div>
+            {mode === 'guided' && (
+              <div className="p-3 border border-secondary/20 bg-secondary/5 rounded-sm">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-secondary mb-1">{guided.recommendation.title}</p>
+                <p className="text-xs text-muted mb-2">{guided.recommendation.summary}</p>
+                <p className="text-[11px] font-mono mb-3">Target: {guided.recommendation.targetMetric}</p>
+                <button
+                  onClick={applyGuidedPlan}
+                  className="px-3 py-2 text-xs rounded-sm border border-secondary/40 text-secondary font-bold hover:bg-secondary/10 transition-all"
+                >
+                  APPLY GUIDED SETUP
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="terminal-card">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-primary">
               <Zap size={20} />
