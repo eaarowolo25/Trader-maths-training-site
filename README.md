@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TraderMath Prep | Elite Cognitive Terminal
 
-## Getting Started
+TraderMath Prep is a high-performance mental arithmetic and auditory cognition training platform designed specifically for junior trading interview preparation (Optiver, IMC, Akuna, Jane Street style assessments). It prioritizes zero-latency interaction, keyboard-first UX, and granular performance analytics.
 
-First, run the development server:
+## 🚀 Key Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. Core Arithmetic Engine
+- **Multi-Category Support:** Addition, Subtraction, Multiplication, Division, Decimals, Percentages, and Indices.
+- **Granular Range Control:** Calibrate operand ranges precisely (e.g., specialized 13-19x practice).
+- **Trivial Filter:** Automatically excludes "easy" questions (like *1 or +0) to maintain high cognitive load.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Live Speed Mode (Zetamac+)
+- **Keyboard-First Design:** Auto-focus inputs and instant transitions for maximum questions-per-minute (QPM).
+- **Auditory Transmission:** Optional Web Speech API integration to practice verbal arithmetic common in floor trading.
+- **Fatigue Simulation:** Visual pressure triggers (screen pulses/flashes) on mistakes to simulate high-stress environments.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Multi-Ladder Flashcards (Intelligence Mode)
+- **Sequential Learning:** Systematically master multipliers from 1 to 100.
+- **Correction Intelligence:** High-fidelity 3D flashcards that flip to reveal correct answers and mental math shortcuts (e.g., x11, x15, squaring ends-in-5).
+- **Neural Feedback Loop:** Tracks response latency per operand. Slower combinations are automatically re-inserted into the deck to force optimization.
+- **Precision Countdown:** High-accuracy timers for rapid-fire execution.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Performance Telemetry
+- **Elite Benchmarking:** Real-time comparison against "Elite Junior Trader" standards (Target: 40 QPM / 98% Accuracy).
+- **Tactical Advisory:** Dynamic improvement tips based on latest session data (Accuracy vs. Latency focus).
+- **Analytics Dashboard:** Visualization of accuracy trends and category-specific volume.
 
-## Learn More
+## 🎨 UI/UX
+- **Terminal Aesthetics:** Professional "Prop Firm" dark mode or high-contrast "Bloomberg Light" themes.
+- **Zero Latency:** Optimized React renders and `requestAnimationFrame` timers for a seamless feel.
+- **Local-First:** All data is persisted in browser local storage; no backend required.
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠 Tech Stack
+- **Framework:** Next.js 15+ (App Router)
+- **Language:** TypeScript
+- **State Management:** Zustand (with Persistence)
+- **Animations:** Framer Motion
+- **Charts:** Recharts
+- **Styling:** Tailwind CSS
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚦 Getting Started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-## Deploy on Vercel
+2. **Launch Terminal:**
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Navigate to:** `http://localhost:3000`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Developed for elite trading performance.*
