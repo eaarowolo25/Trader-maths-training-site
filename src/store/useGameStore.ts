@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ArithmeticType, QuestionConfig, Question } from '@/lib/arithmetic';
+import { ArithmeticType, QuestionConfig } from '@/lib/arithmetic';
+
+export type ThemeType = 'terminal-dark' | 'bloomberg-light';
 
 interface GameSession {
   id: string;
@@ -21,6 +23,7 @@ interface GameSession {
 
 interface GameState {
   // Settings
+  theme: ThemeType;
   configs: Record<ArithmeticType, QuestionConfig>;
   activeTypes: ArithmeticType[];
   sessionDuration: number; // in seconds
@@ -34,6 +37,7 @@ interface GameState {
   totalQuestionsSolved: number;
 
   // Actions
+  setTheme: (theme: ThemeType) => void;
   updateConfig: (type: ArithmeticType, config: Partial<QuestionConfig>) => void;
   toggleType: (type: ArithmeticType) => void;
   addSession: (session: GameSession) => void;
@@ -43,18 +47,19 @@ interface GameState {
 }
 
 const DEFAULT_CONFIGS: Record<ArithmeticType, QuestionConfig> = {
-  addition: { type: 'addition', leftDigits: 2, rightDigits: 2 },
-  subtraction: { type: 'subtraction', leftDigits: 2, rightDigits: 2 },
-  multiplication: { type: 'multiplication', leftDigits: 2, rightDigits: 1 },
-  division: { type: 'division', leftDigits: 2, rightDigits: 1 },
+  addition: { type: 'addition', leftMin: 10, leftMax: 99, rightMin: 10, rightMax: 99 },
+  subtraction: { type: 'subtraction', leftMin: 10, leftMax: 99, rightMin: 10, rightMax: 99 },
+  multiplication: { type: 'multiplication', leftMin: 2, leftMax: 12, rightMin: 2, rightMax: 100 },
+  division: { type: 'division', leftMin: 2, leftMax: 12, rightMin: 2, rightMax: 100 },
   percentage: { type: 'percentage' },
   fraction: { type: 'fraction' },
-  decimal: { type: 'decimal', leftDigits: 1, rightDigits: 1, decimals: 1 },
+  decimal: { type: 'decimal', leftMin: 1, leftMax: 10, rightMin: 1, rightMax: 10, decimals: 1 },
 };
 
 export const useGameStore = create<GameState>()(
   persist(
     (set) => ({
+      theme: 'terminal-dark',
       configs: DEFAULT_CONFIGS,
       activeTypes: ['addition', 'subtraction', 'multiplication'],
       sessionDuration: 120,
@@ -64,6 +69,8 @@ export const useGameStore = create<GameState>()(
       history: [],
       bestScore: 0,
       totalQuestionsSolved: 0,
+
+      setTheme: (theme) => set({ theme }),
 
       updateConfig: (type, config) =>
         set((state) => ({

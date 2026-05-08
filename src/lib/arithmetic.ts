@@ -2,10 +2,10 @@ export type ArithmeticType = 'addition' | 'subtraction' | 'multiplication' | 'di
 
 export interface QuestionConfig {
   type: ArithmeticType;
-  minDigits?: number;
-  maxDigits?: number;
-  leftDigits?: number;
-  rightDigits?: number;
+  leftMin?: number;
+  leftMax?: number;
+  rightMin?: number;
+  rightMax?: number;
   decimals?: number;
   allowNegatives?: boolean;
   integerOnly?: boolean;
@@ -15,25 +15,19 @@ export interface Question {
   text: string;
   answer: number;
   type: ArithmeticType;
+  difficulty: number;
   timestamp: number;
 }
 
 export function generateQuestion(config: QuestionConfig): Question {
-  const { type, leftDigits = 1, rightDigits = 1, decimals = 0, allowNegatives = false } = config;
+  const { type, leftMin = 2, leftMax = 100, rightMin = 2, rightMax = 100, decimals = 0, allowNegatives = false } = config;
 
   let num1: number;
   let num2: number;
   let text: string;
   let answer: number;
 
-  const getRange = (digits: number) => {
-    const min = Math.pow(10, digits - 1);
-    const max = Math.pow(10, digits) - 1;
-    return { min, max };
-  };
-
-  const getRandom = (digits: number) => {
-    const { min, max } = getRange(digits);
+  const getRandomInRange = (min: number, max: number) => {
     let val = Math.floor(Math.random() * (max - min + 1)) + min;
     if (allowNegatives && Math.random() > 0.5) val *= -1;
     return val;
@@ -44,42 +38,56 @@ export function generateQuestion(config: QuestionConfig): Question {
     return parseFloat((val / Math.pow(10, places)).toFixed(places));
   };
 
+  // Calculate difficulty score (rough heuristic)
+  const calculateDifficulty = (n1: number, n2: number, t: ArithmeticType) => {
+    let score = 1;
+    const abs1 = Math.abs(n1);
+    const abs2 = Math.abs(n2);
+    
+    if (t === 'multiplication') {
+      score = (abs1 * abs2) / 100;
+      if (abs1 > 12 && abs2 > 12) score *= 1.5; // Double digits
+    } else if (t === 'addition' || t === 'subtraction') {
+      score = (abs1 + abs2) / 100;
+    }
+    
+    return parseFloat(score.toFixed(2));
+  };
+
   switch (type) {
     case 'addition':
-      num1 = getRandom(leftDigits);
-      num2 = getRandom(rightDigits);
+      num1 = getRandomInRange(leftMin, leftMax);
+      num2 = getRandomInRange(rightMin, rightMax);
       text = `${num1} + ${num2}`;
       answer = num1 + num2;
       break;
 
     case 'subtraction':
-      num1 = getRandom(leftDigits);
-      num2 = getRandom(rightDigits);
+      num1 = getRandomInRange(leftMin, leftMax);
+      num2 = getRandomInRange(rightMin, rightMax);
       text = `${num1} - ${num2}`;
       answer = num1 - num2;
       break;
 
     case 'multiplication':
-      num1 = getRandom(leftDigits);
-      num2 = getRandom(rightDigits);
+      num1 = getRandomInRange(leftMin, leftMax);
+      num2 = getRandomInRange(rightMin, rightMax);
       text = `${num1} × ${num2}`;
       answer = num1 * num2;
       break;
 
     case 'division': {
-      // For exact division, we generate the answer first
-      const divisor = getRandom(rightDigits);
-      const quotient = getRandom(leftDigits);
-      num1 = divisor * quotient;
-      num2 = divisor;
+      // num1 / num2 = answer. We generate num2 and answer then multiply for num1.
+      num2 = getRandomInRange(rightMin, rightMax);
+      answer = getRandomInRange(leftMin, leftMax);
+      num1 = num2 * answer;
       text = `${num1} ÷ ${num2}`;
-      answer = quotient;
       break;
     }
 
     case 'decimal': {
-      num1 = applyDecimals(getRandom(leftDigits + decimals), decimals);
-      num2 = applyDecimals(getRandom(rightDigits + decimals), decimals);
+      num1 = applyDecimals(getRandomInRange(leftMin * 10, leftMax * 10), decimals);
+      num2 = applyDecimals(getRandomInRange(rightMin * 10, rightMax * 10), decimals);
       const op = Math.random() > 0.5 ? '+' : '-';
       text = `${num1} ${op} ${num2}`;
       answer = op === '+' ? num1 + num2 : num1 - num2;
@@ -87,17 +95,16 @@ export function generateQuestion(config: QuestionConfig): Question {
     }
 
     case 'percentage': {
-      // e.g. 15% of 80
-      const percent = [5, 10, 15, 20, 25, 50, 75][Math.floor(Math.random() * 7)];
-      const base = getRandom(2) * 10;
+      const percent = [5, 10, 15, 20, 25, 50, 75, 12.5, 33.3][Math.floor(Math.random() * 9)];
+      const base = getRandomInRange(1, 100) * 10;
       text = `${percent}% of ${base}`;
       answer = (percent / 100) * base;
       break;
     }
 
     default:
-      num1 = getRandom(1);
-      num2 = getRandom(1);
+      num1 = getRandomInRange(2, 10);
+      num2 = getRandomInRange(2, 10);
       text = `${num1} + ${num2}`;
       answer = num1 + num2;
   }
@@ -106,6 +113,7 @@ export function generateQuestion(config: QuestionConfig): Question {
     text,
     answer: parseFloat(answer.toFixed(4)),
     type,
+    difficulty: calculateDifficulty(num1, num2, type),
     timestamp: Date.now(),
   };
 }

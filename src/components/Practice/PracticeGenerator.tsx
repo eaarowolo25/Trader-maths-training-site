@@ -14,7 +14,8 @@ import {
   Play,
   Clock,
   Volume2,
-  Zap
+  Zap,
+  Target
 } from 'lucide-react';
 
 const TYPE_ICONS: Record<string, any> = {
@@ -46,7 +47,7 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold mb-1">Custom Generator</h2>
-          <p className="text-muted-foreground">Configure your training parameters.</p>
+          <p className="text-muted-foreground">Configure your training parameters with precise range control.</p>
         </div>
         <button 
           onClick={onStart}
@@ -75,7 +76,7 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
                     onClick={() => toggleType(type)}
                     className={`flex flex-col items-center justify-center p-4 rounded-sm border transition-all ${
                       active 
-                        ? 'bg-primary/10 border-primary text-primary' 
+                        ? 'bg-primary/10 border-primary text-primary shadow-[0_0_10px_rgba(0,255,204,0.1)]' 
                         : 'bg-background border-border text-muted-foreground hover:border-muted-foreground'
                     }`}
                   >
@@ -88,49 +89,65 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
           </div>
 
           <div className="terminal-card">
-            <h3 className="text-lg font-bold mb-6">Granular Configuration</h3>
-            <div className="space-y-8">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <Target size={20} className="text-primary" />
+              Range Configuration
+            </h3>
+            <div className="space-y-6">
               {activeTypes.map((type) => (
                 <div key={type} className="p-4 border border-border/50 rounded-sm bg-background/50">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-bold uppercase text-sm text-primary">{type}</span>
+                  <div className="flex items-center justify-between mb-4 border-b border-border/30 pb-2">
+                    <span className="font-bold uppercase text-sm text-primary tracking-widest">{type}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">Precision Control</span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-xs text-muted-foreground uppercase mb-2 block tracking-widest">Left Digits</label>
-                      <input 
-                        type="range" min="1" max="5" 
-                        value={configs[type].leftDigits || 1}
-                        onChange={(e) => updateConfig(type, { leftDigits: parseInt(e.target.value) })}
-                        className="w-full accent-primary"
-                      />
-                      <div className="flex justify-between text-[10px] mt-1 font-mono">
-                        <span>1</span>
-                        <span className="text-primary font-bold">{configs[type].leftDigits || 1} DIGITS</span>
-                        <span>5</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] block">Left Operand Range</label>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="number"
+                          value={configs[type].leftMin || 2}
+                          onChange={(e) => updateConfig(type, { leftMin: parseInt(e.target.value) })}
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          placeholder="Min"
+                        />
+                        <span className="text-muted-foreground text-xs">TO</span>
+                        <input 
+                          type="number"
+                          value={configs[type].leftMax || 100}
+                          onChange={(e) => updateConfig(type, { leftMax: parseInt(e.target.value) })}
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          placeholder="Max"
+                        />
                       </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground uppercase mb-2 block tracking-widest">Right Digits</label>
-                      <input 
-                        type="range" min="1" max="5" 
-                        value={configs[type].rightDigits || 1}
-                        onChange={(e) => updateConfig(type, { rightDigits: parseInt(e.target.value) })}
-                        className="w-full accent-primary"
-                      />
-                      <div className="flex justify-between text-[10px] mt-1 font-mono">
-                        <span>1</span>
-                        <span className="text-primary font-bold">{configs[type].rightDigits || 1} DIGITS</span>
-                        <span>5</span>
+                    <div className="space-y-4">
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] block">Right Operand Range</label>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="number"
+                          value={configs[type].rightMin || 2}
+                          onChange={(e) => updateConfig(type, { rightMin: parseInt(e.target.value) })}
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          placeholder="Min"
+                        />
+                        <span className="text-muted-foreground text-xs">TO</span>
+                        <input 
+                          type="number"
+                          value={configs[type].rightMax || 100}
+                          onChange={(e) => updateConfig(type, { rightMax: parseInt(e.target.value) })}
+                          className="w-full bg-card border border-border p-2 text-center font-mono text-sm rounded-sm"
+                          placeholder="Max"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
               {activeTypes.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground italic">
-                  Select a category above to configure digit lengths.
+                <div className="text-center py-12 text-muted-foreground italic border border-dashed border-border rounded-sm">
+                  Enable arithmetic categories above to calibrate operand ranges.
                 </div>
               )}
             </div>
@@ -160,38 +177,45 @@ export default function PracticeGenerator({ onStart }: { onStart: () => void }) 
             </div>
           </div>
 
-          <div className="terminal-card">
+          <div className="terminal-card border-accent/20">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-accent">
               <Volume2 size={20} />
-              Audio & Modes
+              Tactical Modes
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm bg-background/30">
                 <div>
                   <p className="text-sm font-bold">Auditory Mode</p>
-                  <p className="text-[10px] text-muted-foreground uppercase">Spoken questions only</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Spoken questions only</p>
                 </div>
                 <button 
                   onClick={toggleAuditory}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${isAuditory ? 'bg-primary' : 'bg-muted'}`}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${isAuditory ? 'bg-primary shadow-[0_0_10px_rgba(0,255,204,0.3)]' : 'bg-muted/20'}`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isAuditory ? 'left-7' : 'left-1'}`} />
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isAuditory ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-3 border border-border/50 rounded-sm bg-background/30">
                 <div>
                   <p className="text-sm font-bold">Fatigue Simulation</p>
-                  <p className="text-[10px] text-muted-foreground uppercase">Screen flashes & pressure</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Mistake pressure effects</p>
                 </div>
                 <button 
                   onClick={toggleFatigue}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${isFatigue ? 'bg-primary' : 'bg-muted'}`}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${isFatigue ? 'bg-primary shadow-[0_0_10px_rgba(0,255,204,0.3)]' : 'bg-muted/20'}`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isFatigue ? 'left-7' : 'left-1'}`} />
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isFatigue ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-sm">
+            <h4 className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">Pro Tip</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Elite traders often practice within narrow ranges (e.g., 13-19 x 13-19) to master specific multiplication patterns.
+            </p>
           </div>
         </div>
       </div>
