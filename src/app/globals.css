@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050505;
+  --foreground: #e0e0e0;
+  --primary: #00ffcc;
+  --secondary: #ff9900;
+  --accent: #ff0055;
+  --card: #0d0d0d;
+  --card-foreground: #e0e0e0;
+  --border: #1a1a1a;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+.terminal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.terminal-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.1);
+}
+
+.neon-text {
+  color: var(--primary);
+  text-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+}
+
+.neon-border {
+  border-color: var(--primary);
+  box-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
