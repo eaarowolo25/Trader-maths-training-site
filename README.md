@@ -1,3 +1,4 @@
+
 # TraderMath Prep | Elite Cognitive Terminal
 
 TraderMath Prep is a high-performance mental arithmetic and auditory cognition training platform designed specifically for junior trading interview preparation (Optiver, IMC, Akuna, Jane Street style assessments). It prioritizes zero-latency interaction, keyboard-first UX, and granular performance analytics.

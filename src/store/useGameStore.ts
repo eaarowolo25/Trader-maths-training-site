@@ -51,6 +51,8 @@ export interface ConcentrationSession {
   startTime: number;
   endTime: number;
   totalMs: number;
+  mode: 'sequential' | 'random';
+  concurrentNumbers?: number;
   rangeStart?: number;
   rangeEnd?: number;
   misclickCount: number;

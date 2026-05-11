@@ -23,11 +23,12 @@ import LiveSpeedMode from '@/components/Practice/LiveSpeedMode';
 import AnalyticsDashboard from '@/components/Analytics/AnalyticsDashboard';
 import LadderMode from '@/components/Practice/LadderMode';
 import ConcentrationGridMode from '@/components/Practice/ConcentrationGridMode';
+import ProbabilityMode from '@/components/Practice/ProbabilityMode';
 import { BENCHMARK_TARGET_QPM, buildGuidedRecommendation, computeDifficultyWeightedMetrics } from '@/lib/adaptive';
 import { ConcentrationSession, GameSession, ThemeType } from '@/store/useGameStore';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics' | 'ladder' | 'concentration'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'practice' | 'settings' | 'game' | 'analytics' | 'ladder' | 'concentration' | 'probability'>('dashboard');
   const { history, bestScore, totalQuestionsSolved, concentrationHistory, theme, setTheme, configs } = useGameStore();
 
   // Apply theme class to body
@@ -53,6 +54,8 @@ export default function Home() {
         return <LadderMode onExit={() => setActiveTab('dashboard')} />;
       case 'concentration':
         return <ConcentrationGridMode onExit={() => setActiveTab('dashboard')} />;
+      case 'probability':
+        return <ProbabilityMode />;
       case 'settings':
         return <SettingsPanel theme={theme} setTheme={setTheme} />;
       case 'analytics':
@@ -75,7 +78,8 @@ export default function Home() {
         activeTab === 'practice' ||
         activeTab === 'settings' ||
         activeTab === 'analytics' ||
-        activeTab === 'concentration'
+        activeTab === 'concentration' ||
+        activeTab === 'probability'
       ) && (
         <aside className="w-64 border-r border-border flex flex-col p-4 bg-sidebar">
           <div className="mb-8 px-2 flex items-center gap-3">
@@ -103,6 +107,12 @@ export default function Home() {
               label="Multi Ladder" 
               active={false} 
               onClick={() => setActiveTab('ladder')} 
+            />
+            <SidebarItem 
+              icon={<BrainCircuit size={20} />} 
+              label="Probability" 
+              active={activeTab === 'probability'} 
+              onClick={() => setActiveTab('probability')} 
             />
             <SidebarItem 
               icon={<BarChart3 size={20} />} 
@@ -255,14 +265,23 @@ function Dashboard({
         <StatCard label="Total Vol" value={totalQuestionsSolved} icon={<Zap className="text-accent" />} />
       </div>
 
-      <div className="terminal-card">
-        <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="terminal-card">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
             <Grid3x3 size={14} className="text-secondary" />
             Concentration Grid
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
             Best time: {bestConcentration ? `${(bestConcentration / 1000).toFixed(2)}s` : 'No runs yet'}.
+          </p>
+        </div>
+        <div className="terminal-card">
+          <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+            <BrainCircuit size={14} className="text-primary" />
+            Probability Training
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Improve mental calculation of odds and expected value.
           </p>
         </div>
       </div>

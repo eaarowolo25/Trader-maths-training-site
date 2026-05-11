@@ -276,7 +276,6 @@ INTERVIEW SIMULATION MODE
 This mode should:
 - ask spoken questions
 - enforce time pressure
-- randomly vary arithmetic types
 - simulate real assessment center pacing
 
 Include:
